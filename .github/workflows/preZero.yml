@@ -1,7 +1,7 @@
 ---
 # This workflow integrates qwiet.ai preZero with GitHub
 # Visit https://docs.shiftleft.io for help
-name: qwietqual
+name: qwiet.ai
 
 on:
   pull_request:
@@ -26,7 +26,7 @@ jobs:
     - name: Build web api
       run: dotnet build netcoreWebapi
     - name: Analyze with NextGen Static Analysis
-      run: .\sl analyze --strict --wait --app Qwiet-csharp-GH --tag branch=${{ github.head_ref }} netcoreWebapi/.
+      run: .\sl analyze --strict --wait --app QwietAI-csharp-GH --tag branch=${{ github.head_ref }} netcoreWebapi/.
       env:
         SHIFTLEFT_ACCESS_TOKEN: ${{ secrets.SHIFTLEFT_ACCESS_TOKENQ }}
         SHIFTLEFT_API_HOST: www.shiftleft.io
@@ -45,7 +45,7 @@ jobs:
         curl https://cdn.shiftleft.io/download/sl > ${GITHUB_WORKSPACE}/sl && chmod a+rx ${GITHUB_WORKSPACE}/sl
     - name: Validate Build Rules
       run: |
-        ${GITHUB_WORKSPACE}/sl check-analysis --app Qwiet-csharp-GH \
+        ${GITHUB_WORKSPACE}/sl check-analysis --app QwietAI-csharp-GH \
             --github-pr-number=${{github.event.number}} \
             --github-pr-user=${{ github.repository_owner }} \
             --github-pr-repo=${{ github.event.repository.name }} \
