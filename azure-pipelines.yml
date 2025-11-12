@@ -60,7 +60,7 @@ stages:
           sl analyze \
             --wait \
             --verbose \
-            --app "$(System.TeamProject)" \
+            --app QwietAI-csharp-demo \
             --tag "branch=$(Build.SourceBranch)" \
             --team "$(SHIFTLEFT_TEAM)" \
             --structured-output \
@@ -79,7 +79,7 @@ stages:
         script: |
           sl check-analysis \
             --v2 \
-            --app "$(System.TeamProject)" \
+            --app QwietAI-csharp-demo \
             --no-build-rules \
             --max-findings 50 \
             --report-file qwiet-check-analysis-report.md
@@ -170,7 +170,7 @@ stages:
           sl check-analysis \
             --v2 \
             --config report/build-rules-v2/shiftleft.yml \
-            --app "$(System.TeamProject)"
+            --app QwietAI-csharp-demo
       env:
         SHIFTLEFT_ACCESS_TOKEN: $(SHIFTLEFT_ACCESS_TOKEN)
         SHIFTLEFT_TEAM: $(SHIFTLEFT_TEAM)
