@@ -1,7 +1,7 @@
 ---
 # This workflow integrates qwiet.ai preZero with GitHub
 # Visit https://docs.shiftleft.io for help
-name: qwiet.ai
+name: qwiet.ai2
 
 on:
   pull_request:
