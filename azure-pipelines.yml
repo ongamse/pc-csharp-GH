@@ -1,0 +1,150 @@
+# .NET Desktop
+# Build and run tests for .NET Desktop or Windows classic desktop solutions.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/apps/windows/dot-net
+
+trigger:
+- master
+
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+steps:
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+- task: VSTest@2
+  inputs:
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+jobs:
+  - job: QwietAIScan
+    pool:
+      vmImage: 'ubuntu-latest'
+
+    steps:
+      - task: CmdLine@2
+        displayName: Install Qwiet preZero on Linux/MacOs
+        condition: eq( variables['Agent.OS'], 'Linux' )
+        inputs:
+          script: |
+            curl https://cdn.shiftleft.io/download/sl > $HOME/sl && chmod a+rx $HOME/sl
+            sudo mv $HOME/sl /usr/local/bin/
+
+      - task: PowerShell@2
+        displayName: Install Qwiet preZero on Windows
+        condition: eq( variables['Agent.OS'], 'Windows_NT' )
+        inputs:
+          targetType: 'inline'
+          script: |
+            Invoke-WebRequest -Uri 'https://cdn.shiftleft.io/download/sl-latest-windows-x64.zip' -OutFile $(System.DefaultWorkingDirectory)\sl.zip
+            Expand-Archive -Path $(System.DefaultWorkingDirectory)\sl.zip -DestinationPath $(System.DefaultWorkingDirectory)\
+            $env:Path = $env:Path + ";$(System.DefaultWorkingDirectory)\sl" +  ";$(System.DefaultWorkingDirectory)"
+
+      - task: CmdLine@2
+        displayName: Analyze with Qwiet preZero
+        inputs:
+          script: |
+            sl analyze --wait --verbose --app $(System.TeamProject)  --tag branch=$(Build.SourceBranch) --team $(SHIFTLEFT_TEAM) --structured-output --structured-output-format JSON --structured-output-file-path qwiet-analysis-output.json  --csharp netcoreWebapi/netcoreWebapi.sln
+        env:
+          SHIFTLEFT_ACCESS_TOKEN: $(SHIFTLEFT_ACCESS_TOKEN)
+          SHIFTLEFT_TEAM: $(SHIFTLEFT_TEAM)
+
+      - task: CmdLine@2
+        displayName: Check Analysis Results
+        continueOnError: true
+        inputs:
+          script: |
+            sl check-analysis --v2 --app $(System.TeamProject) --no-build-rules --max-findings 50 --report-file qwiet-check-analysis-report.md
+        env:
+          SHIFTLEFT_ACCESS_TOKEN: $(SHIFTLEFT_ACCESS_TOKEN)
+          SHIFTLEFT_TEAM: $(SHIFTLEFT_TEAM)
+
+      - task: CopyFiles@2
+        displayName: 'Copy Qwiet preZero check-analysis reports to: $(Build.ArtifactStagingDirectory)'
+        inputs:
+          SourceFolder: '$(Build.SourcesDirectory)'
+          Contents: |
+            qwiet-analysis-output.json
+            qwiet-check-analysis-report.md
+          TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish Artifact: QwietReports'
+        inputs:
+          ArtifactName: QwietReports
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+
+      - task: CmdLine@2
+        displayName: Generate Qwiet preZero bestfix report
+        inputs:
+          script: |
+            git clone https://github.com/ShiftLeftSecurity/field-integrations.git report
+            pip3 install -r report/shiftleft-utils/requirements.txt
+            python3 report/shiftleft-utils/bestfix.py --no-logo -a $(System.TeamProject) -f json -o qwiet-bestfix-report.json -s .
+          failOnStderr: false
+        env:
+          SHIFTLEFT_ACCESS_TOKEN: $(SHIFTLEFT_ACCESS_TOKEN)
+
+      - task: CopyFiles@2
+        displayName: 'Copy Qwiet preZero bestfix reports to: $(Build.ArtifactStagingDirectory)'
+        inputs:
+          SourceFolder: '$(Build.SourcesDirectory)'
+          Contents: |
+            qwiet-bestfix-report.json
+          TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish Artifact: QwietReport'
+        inputs:
+          ArtifactName: QwietReports
+          PathtoPublish: '$(build.artifactstagingdirectory)'
+
+      - task: CmdLine@2
+        displayName: Generate Qwiet preZero bestfix report
+        inputs:
+          script: |
+            python3 report/shiftleft-utils/sbom_report.py -a $(System.TeamProject) -o qwiet-sbom-report.json
+          failOnStderr: false
+        env:
+          SHIFTLEFT_ACCESS_TOKEN: $(SHIFTLEFT_ACCESS_TOKEN)
+      - task: CopyFiles@2
+        displayName: 'Copy Qwiet preZero bestfix reports to: $(Build.ArtifactStagingDirectory)'
+        inputs:
+          SourceFolder: '$(Build.SourcesDirectory)'
+          Contents: |
+            qwiet-sbom-report.json
+          TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish Artifact: QwietReport'
+        inputs:
+          ArtifactName: QwietReports
+          PathtoPublish: '$(build.artifactstagingdirectory)'
+
+
+      - task: CmdLine@2
+        displayName: Check Analysis Results with build-rules
+        continueOnError: true
+        inputs:
+          script: |
+            sl check-analysis --v2 --config report/build-rules-v2/shiftleft.yml --app $(System.TeamProject) --no-build-rules
+        env:
+          SHIFTLEFT_ACCESS_TOKEN: $(SHIFTLEFT_ACCESS_TOKEN)
+          SHIFTLEFT_TEAM: $(SHIFTLEFT_TEAM)     
