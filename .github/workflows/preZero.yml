@@ -24,7 +24,7 @@ jobs:
     - name: Build web api
       run: dotnet build netcoreWebapi
     - name: Analyze with preZero NextGen Static Analysis
-      run: .\sl analyze --strict --wait --verbose --app QwietAI-csharp --tag branch=${{ github.head_ref }} netcoreWebapi/netcoreWebapi.csproj
+      run: .\sl analyze --strict --wait --verbose --app QwietAI-csharp1 --tag branch=${{ github.head_ref }} netcoreWebapi/netcoreWebapi.csproj
       env:
         SHIFTLEFT_ACCESS_TOKEN: ${{ secrets.SHIFTLEFT_ACCESS_TOKEN_POC }}
         SHIFTLEFT_API_HOST: www.shiftleft.io
@@ -43,7 +43,7 @@ jobs:
         curl https://cdn.shiftleft.io/download/sl > ${GITHUB_WORKSPACE}/sl && chmod a+rx ${GITHUB_WORKSPACE}/sl
     - name: Validate Build Rules
       run: |
-        ${GITHUB_WORKSPACE}/sl check-analysis --app QwietAI-csharp \
+        ${GITHUB_WORKSPACE}/sl check-analysis --app QwietAI-csharp1 \
             --github-pr-number=${{github.event.number}} \
             --github-pr-user=${{ github.repository_owner }} \
             --github-pr-repo=${{ github.event.repository.name }} \
